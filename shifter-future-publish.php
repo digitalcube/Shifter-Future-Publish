@@ -3,7 +3,7 @@
  * Plugin Name: Shifter Future Publish
  * Plugin URI: https://github.com/digitalcube/shifter-future-publish
  * Description: Allows publishing posts with future dates immediately. Useful for Shifter static site generation to include future-dated content in artifacts.
- * Version: 2.0.5
+ * Version: 2.1.0
  * Author: DigitalCube
  * Author URI: https://developer.getshifter.io/
  * License: GPL-2.0+
@@ -21,15 +21,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!defined('SHIFTER_FUTURE_PUBLISH_VERSION')) {
-    define('SHIFTER_FUTURE_PUBLISH_VERSION', '2.0.5');
-}
-if (!defined('SHIFTER_FUTURE_PUBLISH_PLUGIN_DIR')) {
-    define('SHIFTER_FUTURE_PUBLISH_PLUGIN_DIR', plugin_dir_path(__FILE__));
-}
-if (!defined('SHIFTER_FUTURE_PUBLISH_PLUGIN_URL')) {
-    define('SHIFTER_FUTURE_PUBLISH_PLUGIN_URL', plugin_dir_url(__FILE__));
-}
+define('SHIFTER_FUTURE_PUBLISH_VERSION', '2.1.0');
+define('SHIFTER_FUTURE_PUBLISH_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 final class Shifter_Future_Publish {
 
@@ -43,49 +36,48 @@ final class Shifter_Future_Publish {
     }
 
     private function __construct() {
-        $this->load_settings();
+        $this->settings = wp_parse_args(
+            get_option('shifter_future_publish_settings', []),
+            ['enabled' => true, 'post_types' => ['post']]
+        );
         $this->init_hooks();
     }
 
-    private function load_settings(): void {
-        $defaults = [
-            'enabled' => true,
-            'post_types' => ['post'],
-        ];
-        $saved = get_option('shifter_future_publish_settings', []);
-        $this->settings = wp_parse_args($saved, $defaults);
-    }
-
     private function init_hooks(): void {
-        if (!$this->settings['enabled']) {
-            $this->register_admin_hooks();
-            return;
-        }
-
-        // Core Functionality Layer 1: Intercept post save to force publish status
-        add_filter('wp_insert_post_data', $this->force_publish_status(...), 10, 2);
-
-        // Core Functionality Layer 2: Handle future_{post_type} hooks
-        add_action('init', $this->setup_future_hooks(...));
-
-        // Core Functionality Layer 3: Filter get_post_status
-        add_filter('get_post_status', $this->filter_post_status(...), 10, 2);
-
-        // Core Functionality Layer 4: Handle single post 404 prevention
-        add_filter('the_posts', $this->show_future_posts(...), 10, 2);
-
-        // Core Functionality Layer 5: Modify SQL queries to include future posts
-        add_filter('posts_where', $this->modify_posts_where(...), 10, 2);
-
-        $this->register_admin_hooks();
-    }
-
-    private function register_admin_hooks(): void {
+        // Admin hooks (always register)
         add_action('admin_menu', $this->add_admin_menu(...));
         add_action('admin_init', $this->register_settings(...));
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), $this->add_settings_link(...));
+
+        if (!$this->settings['enabled']) {
+            return;
+        }
+
+        // Core: Intercept post save to force publish status
+        add_filter('wp_insert_post_data', $this->force_publish_status(...), 10, 2);
+
+        // Editor scripts for button text change
         add_action('enqueue_block_editor_assets', $this->enqueue_editor_assets(...));
         add_action('admin_enqueue_scripts', $this->enqueue_classic_editor_assets(...));
+    }
+
+    /**
+     * Force publish status for future-dated posts.
+     *
+     * @param array<string, mixed> $data Post data array.
+     * @param array<string, mixed> $postarr Raw post data array.
+     * @return array<string, mixed> Modified post data.
+     */
+    public function force_publish_status(array $data, array $postarr): array {
+        if (!in_array($data['post_type'] ?? '', $this->settings['post_types'], true)) {
+            return $data;
+        }
+
+        if ($data['post_status'] === 'future') {
+            $data['post_status'] = 'publish';
+        }
+
+        return $data;
     }
 
     /**
@@ -93,16 +85,10 @@ final class Shifter_Future_Publish {
      */
     public function enqueue_editor_assets(): void {
         $screen = get_current_screen();
-        if (!$screen || !$screen->is_block_editor()) {
+        if (!$screen?->is_block_editor()) {
             return;
         }
 
-        // Skip if plugin is disabled
-        if (!$this->settings['enabled']) {
-            return;
-        }
-
-        // Always enqueue and let JS handle post type check
         wp_enqueue_script(
             'shifter-future-publish-editor',
             SHIFTER_FUTURE_PUBLISH_PLUGIN_URL . 'assets/js/editor.js',
@@ -125,22 +111,14 @@ final class Shifter_Future_Publish {
      * Enqueue classic editor assets.
      */
     public function enqueue_classic_editor_assets(string $hook): void {
-        // Only load on post edit screens
         if (!in_array($hook, ['post.php', 'post-new.php'], true)) {
             return;
         }
 
         $screen = get_current_screen();
-        if (!$screen) {
+        if (!$screen || $screen->is_block_editor()) {
             return;
         }
-
-        // Skip if block editor is active
-        if (method_exists($screen, 'is_block_editor') && $screen->is_block_editor()) {
-            return;
-        }
-
-        $post_type = $screen->post_type ?? 'post';
 
         wp_enqueue_script(
             'shifter-future-publish-classic-editor',
@@ -156,207 +134,9 @@ final class Shifter_Future_Publish {
             [
                 'enabled' => $this->settings['enabled'],
                 'postTypes' => $this->settings['post_types'],
-                'currentPostType' => $post_type,
+                'currentPostType' => $screen->post_type ?? 'post',
             ]
         );
-    }
-
-    /**
-     * Setup future post hooks for each enabled post type.
-     */
-    public function setup_future_hooks(): void {
-        remove_action('future_post', '_future_post_hook');
-
-        foreach ($this->settings['post_types'] as $post_type) {
-            remove_action("future_{$post_type}", '_future_post_hook');
-            add_action("future_{$post_type}", $this->publish_future_post_now(...));
-        }
-
-        add_action('future_post', $this->handle_future_post(...));
-    }
-
-    /**
-     * Handle future_post action for non-enabled post types.
-     */
-    public function handle_future_post(int $post_id): void {
-        $post = get_post($post_id);
-        if (!$post instanceof \WP_Post) {
-            return;
-        }
-
-        if ($this->is_enabled_post_type($post->post_type)) {
-            return;
-        }
-
-        _future_post_hook($post_id);
-    }
-
-    /**
-     * Publish future post immediately.
-     */
-    public function publish_future_post_now(int $post_id): void {
-        $result = wp_publish_post($post_id);
-        if (is_wp_error($result)) {
-            error_log(sprintf(
-                'Shifter Future Publish: Failed to publish post %d - %s',
-                $post_id,
-                $result->get_error_message()
-            ));
-        }
-    }
-
-    /**
-     * Force publish status for future-dated posts of enabled post types.
-     *
-     * @param array<string, mixed> $data    Post data array.
-     * @param array<string, mixed> $postarr Raw post data array.
-     * @return array<string, mixed> Modified post data.
-     */
-    public function force_publish_status(array $data, array $postarr): array {
-        if (!$this->is_enabled_post_type($data['post_type'] ?? '')) {
-            return $data;
-        }
-
-        if ($data['post_status'] === 'future') {
-            $data['post_status'] = 'publish';
-        }
-
-        return $data;
-    }
-
-    /**
-     * Filter post status to return 'publish' for future posts of enabled types.
-     */
-    public function filter_post_status(string $post_status, \WP_Post|int $post): string {
-        if (is_admin() && !wp_doing_ajax()) {
-            return $post_status;
-        }
-
-        $post_object = $post instanceof \WP_Post ? $post : get_post($post);
-        if (!$post_object instanceof \WP_Post) {
-            return $post_status;
-        }
-
-        if (!$this->is_enabled_post_type($post_object->post_type)) {
-            return $post_status;
-        }
-
-        return match ($post_status) {
-            'future' => 'publish',
-            default => $post_status,
-        };
-    }
-
-    /**
-     * Show future posts on single post pages to prevent 404 errors.
-     *
-     * @param array<\WP_Post> $posts    Array of post objects.
-     * @param \WP_Query       $wp_query The WP_Query instance.
-     * @return array<\WP_Post> Modified array of post objects.
-     */
-    public function show_future_posts(array $posts, \WP_Query $wp_query): array {
-        global $wpdb;
-
-        if (!$wp_query->is_main_query() || !$wp_query->is_single()) {
-            return $posts;
-        }
-
-        if (!empty($posts)) {
-            // Clone posts to avoid modifying original WP_Post objects directly
-            $modified_posts = [];
-            foreach ($posts as $post) {
-                if ($post->post_status === 'future' && $this->is_enabled_post_type($post->post_type)) {
-                    $cloned_post = clone $post;
-                    $cloned_post->post_status = 'publish';
-                    $modified_posts[] = $cloned_post;
-                } else {
-                    $modified_posts[] = $post;
-                }
-            }
-            return $modified_posts;
-        }
-
-        $post_type = $wp_query->get('post_type') ?: 'post';
-
-        if (!$this->is_enabled_post_type($post_type)) {
-            return $posts;
-        }
-
-        $post_name = $wp_query->get('name') ?: $wp_query->get($post_type);
-
-        if (empty($post_name)) {
-            return $posts;
-        }
-
-        $future_post = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND post_status = 'future' LIMIT 1",
-                $post_name,
-                $post_type
-            )
-        );
-
-        if ($future_post instanceof \stdClass) {
-            $future_post->post_status = 'publish';
-            // Convert stdClass to WP_Post for proper type handling
-            return [new \WP_Post($future_post)];
-        }
-
-        return $posts;
-    }
-
-    /**
-     * Modify SQL WHERE clause to include future posts in queries.
-     */
-    public function modify_posts_where(string $where, \WP_Query $wp_query): string {
-        global $wpdb;
-
-        if (is_admin() && !wp_doing_ajax()) {
-            return $where;
-        }
-
-        $post_type = $wp_query->get('post_type') ?: 'post';
-        $post_types = is_array($post_type) ? $post_type : [$post_type];
-
-        $should_modify = array_reduce(
-            $post_types,
-            fn(bool $carry, string $type): bool => $carry || $this->is_enabled_post_type($type),
-            false
-        );
-
-        if (!$should_modify) {
-            return $where;
-        }
-
-        // Pattern 1: With table prefix
-        $where = str_replace(
-            "{$wpdb->posts}.post_status = 'publish'",
-            "{$wpdb->posts}.post_status IN ('publish', 'future')",
-            $where
-        );
-
-        // Pattern 2: Without table prefix
-        $where = preg_replace(
-            "/(?<![a-zA-Z0-9_.])post_status\s*=\s*'publish'/",
-            "post_status IN ('publish', 'future')",
-            $where
-        ) ?: $where;
-
-        // Pattern 3: IN clause with only 'publish'
-        $where = preg_replace(
-            "/post_status\s+IN\s*\(\s*'publish'\s*\)/i",
-            "post_status IN ('publish', 'future')",
-            $where
-        ) ?: $where;
-
-        return $where;
-    }
-
-    /**
-     * Check if a post type is enabled for future publishing.
-     */
-    private function is_enabled_post_type(string $post_type): bool {
-        return in_array($post_type, $this->settings['post_types'], true);
     }
 
     /**
@@ -385,7 +165,7 @@ final class Shifter_Future_Publish {
         add_settings_section(
             'shifter_future_publish_main_section',
             __('General Settings', 'shifter-future-publish'),
-            $this->render_section_description(...),
+            fn() => null,
             'shifter-future-publish'
         );
 
@@ -413,8 +193,6 @@ final class Shifter_Future_Publish {
      * @return array{enabled: bool, post_types: array<string>} Sanitized data.
      */
     public function sanitize_settings(?array $input): array {
-        $input ??= [];
-
         $valid_post_types = array_keys(get_post_types(['public' => true], 'names'));
         $post_types = isset($input['post_types']) && is_array($input['post_types'])
             ? array_values(array_intersect($input['post_types'], $valid_post_types))
@@ -427,25 +205,13 @@ final class Shifter_Future_Publish {
     }
 
     /**
-     * Render section description.
-     */
-    public function render_section_description(): void {
-        echo '<p>' . esc_html__('Configure which post types should allow publishing with future dates. When enabled, posts with future dates will be set to "publish" status instead of "future" status, allowing them to be included in Shifter artifacts.', 'shifter-future-publish') . '</p>';
-    }
-
-    /**
      * Render enabled checkbox field.
      */
     public function render_enabled_field(): void {
-        $checked = $this->settings['enabled'] ? 'checked' : '';
         printf(
             '<label><input type="checkbox" name="shifter_future_publish_settings[enabled]" value="1" %s> %s</label>',
-            $checked,
+            $this->settings['enabled'] ? 'checked' : '',
             esc_html__('Enable future date publishing', 'shifter-future-publish')
-        );
-        printf(
-            '<p class="description">%s</p>',
-            esc_html__('When enabled, posts with future dates will be published immediately instead of being scheduled.', 'shifter-future-publish')
         );
     }
 
@@ -453,22 +219,15 @@ final class Shifter_Future_Publish {
      * Render post types checkboxes field.
      */
     public function render_post_types_field(): void {
-        $post_types = get_post_types(['public' => true], 'objects');
-
-        foreach ($post_types as $post_type) {
-            $checked = $this->is_enabled_post_type($post_type->name) ? 'checked' : '';
+        foreach (get_post_types(['public' => true], 'objects') as $post_type) {
             printf(
-                '<label style="display: block; margin-bottom: 5px;"><input type="checkbox" name="shifter_future_publish_settings[post_types][]" value="%s" %s> %s <code>(%s)</code></label>',
+                '<label style="display:block;margin-bottom:5px"><input type="checkbox" name="shifter_future_publish_settings[post_types][]" value="%s" %s> %s <code>(%s)</code></label>',
                 esc_attr($post_type->name),
-                $checked,
+                in_array($post_type->name, $this->settings['post_types'], true) ? 'checked' : '',
                 esc_html($post_type->label),
                 esc_html($post_type->name)
             );
         }
-        printf(
-            '<p class="description">%s</p>',
-            esc_html__('Select which post types should allow publishing with future dates.', 'shifter-future-publish')
-        );
     }
 
     /**
@@ -481,21 +240,7 @@ final class Shifter_Future_Publish {
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-
-            <div class="notice notice-info">
-                <p>
-                    <strong><?php esc_html_e('About this plugin:', 'shifter-future-publish'); ?></strong>
-                    <?php esc_html_e('This plugin allows you to publish posts with future dates immediately. This is useful for Shifter static site generation, where you want future-dated content to be included in the generated artifacts.', 'shifter-future-publish'); ?>
-                </p>
-            </div>
-
-            <div class="notice notice-warning">
-                <p>
-                    <strong><?php esc_html_e('Important:', 'shifter-future-publish'); ?></strong>
-                    <?php esc_html_e('When enabled, posts with future dates will be visible to all visitors immediately. Make sure your content is ready before publishing.', 'shifter-future-publish'); ?>
-                </p>
-            </div>
-
+            <p><?php esc_html_e('This plugin allows publishing posts with future dates immediately for Shifter static site generation.', 'shifter-future-publish'); ?></p>
             <form action="options.php" method="post">
                 <?php
                 settings_fields('shifter_future_publish_settings_group');
@@ -503,18 +248,6 @@ final class Shifter_Future_Publish {
                 submit_button();
                 ?>
             </form>
-
-            <div class="card" style="max-width: 800px; margin-top: 20px;">
-                <h2><?php esc_html_e('How it works', 'shifter-future-publish'); ?></h2>
-                <p><?php esc_html_e('This plugin uses multiple layers to ensure future-dated posts are treated as published:', 'shifter-future-publish'); ?></p>
-                <ol>
-                    <li><strong><?php esc_html_e('Post Save Interception:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('When saving a post with a future date, the status is changed from "future" to "publish" before saving to the database.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Future Post Hooks:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('Post-type-specific hooks ensure any posts that slip through are immediately published.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Status Filter:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('The get_post_status filter ensures future posts appear as published in all contexts.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Query Modification:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('SQL queries are modified to include future posts in archive and listing pages.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('404 Prevention:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('Single post pages for future posts will not return 404 errors.', 'shifter-future-publish'); ?></li>
-                </ol>
-            </div>
         </div>
         <?php
     }
@@ -526,42 +259,19 @@ final class Shifter_Future_Publish {
      * @return array<string> Modified links.
      */
     public function add_settings_link(array $links): array {
-        $settings_link = sprintf(
+        array_unshift($links, sprintf(
             '<a href="%s">%s</a>',
             admin_url('options-general.php?page=shifter-future-publish'),
             __('Settings', 'shifter-future-publish')
-        );
-        array_unshift($links, $settings_link);
+        ));
         return $links;
-    }
-
-    /**
-     * Get current settings.
-     *
-     * @return array{enabled: bool, post_types: array<string>} Current settings.
-     */
-    public function get_settings(): array {
-        return $this->settings;
     }
 }
 
-// Initialize the plugin
-add_action('plugins_loaded', static fn(): Shifter_Future_Publish => Shifter_Future_Publish::get_instance());
+add_action('plugins_loaded', static fn() => Shifter_Future_Publish::get_instance());
 
-// Activation hook
 register_activation_hook(__FILE__, static function(): void {
-    $default_settings = [
-        'enabled' => true,
-        'post_types' => ['post'],
-    ];
-
     if (!get_option('shifter_future_publish_settings')) {
-        add_option('shifter_future_publish_settings', $default_settings);
+        add_option('shifter_future_publish_settings', ['enabled' => true, 'post_types' => ['post']]);
     }
-});
-
-// Deactivation hook
-register_deactivation_hook(__FILE__, static function(): void {
-    // Optionally clean up settings on deactivation
-    // delete_option('shifter_future_publish_settings');
 });

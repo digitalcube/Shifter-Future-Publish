@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.0.5
+Stable tag: 2.1.0
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -22,17 +22,11 @@ This plugin is particularly useful for Shifter static site generation, where you
 * Configure which post types should allow future date publishing
 * Simple admin settings page
 * Compatible with Shifter static site generation
-* Multiple layers of protection to ensure future posts are treated as published
+* Lightweight and efficient implementation
 
 = How It Works =
 
-This plugin uses multiple layers to ensure future-dated posts are treated as published:
-
-1. **Post Save Interception** - When saving a post with a future date, the status is changed from "future" to "publish" before saving to the database.
-2. **Future Post Hooks** - Post-type-specific hooks ensure any posts that slip through are immediately published.
-3. **Status Filter** - The get_post_status filter ensures future posts appear as published in all contexts.
-4. **Query Modification** - SQL queries are modified to include future posts in archive and listing pages.
-5. **404 Prevention** - Single post pages for future posts will not return 404 errors.
+When saving a post with a future date, the plugin intercepts the save process and changes the status from "future" to "publish" before saving to the database. This simple approach ensures future-dated posts are immediately visible.
 
 = Use Cases =
 
@@ -51,7 +45,7 @@ This plugin uses multiple layers to ensure future-dated posts are treated as pub
 
 = How does this plugin work? =
 
-When you publish a post with a future date, WordPress normally sets the post status to "future" and schedules it for publication at the specified date. This plugin intercepts that process using multiple layers (post save interception, future post hooks, status filters, query modification, and 404 prevention) to ensure the post is treated as "publish" status, making it immediately visible while keeping the future date.
+When you publish a post with a future date, WordPress normally sets the post status to "future" and schedules it for publication at the specified date. This plugin intercepts the save process and changes the status to "publish", making it immediately visible while keeping the future date.
 
 = Will this affect my existing scheduled posts? =
 
@@ -74,6 +68,16 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 1. Plugin settings page
 
 == Changelog ==
+
+= 2.1.0 =
+* Major refactoring: Simplified codebase by removing redundant protection layers
+* PHP reduced from 568 lines to ~250 lines
+* JavaScript files significantly simplified
+* Removed: Multiple fallback mechanisms (MutationObserver, setInterval, multiple event listeners)
+* Kept: Core wp_insert_post_data filter for status change
+* Kept: wp.data.subscribe for Gutenberg button text
+* Kept: jQuery change events for Classic Editor button text
+* Performance: Lighter footprint with same functionality
 
 = 2.0.5 =
 * Fixed: While loop assignment syntax for better code clarity
