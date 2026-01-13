@@ -11,8 +11,8 @@
 
 	<!-- Use WordPress standard -->
 	<rule ref="WordPress"/>
-    
-    <!-- Show progress and sniff codes -->
+
+	<!-- Show progress and sniff codes -->
 	<arg value="ps"/>
 	<arg name="colors"/>
 </ruleset>
