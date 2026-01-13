@@ -1,0 +1,10 @@
+parameters:
+	level: 0
+	paths:
+		- ../shifter-future-publish.php
+		- .
+	excludePaths:
+		- vendor
+
+includes:
+	- vendor/szepeviktor/phpstan-wordpress/extension.neon
