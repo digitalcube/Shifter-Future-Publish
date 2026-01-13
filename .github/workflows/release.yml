@@ -19,6 +19,11 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Update plugin version
+        run: |
+          sed -i "s/Version: .*/Version: ${{ steps.version.outputs.version }}/" shifter-future-publish.php
+          sed -i "s/define('SHIFTER_FUTURE_PUBLISH_VERSION', '.*')/define('SHIFTER_FUTURE_PUBLISH_VERSION', '${{ steps.version.outputs.version }}')/" shifter-future-publish.php
+
       - name: Create release package
         run: |
           mkdir -p dist
