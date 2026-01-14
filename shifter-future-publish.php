@@ -149,8 +149,10 @@ final class Shifter_Future_Publish {
 		}
 
 		// Always enqueue and let JS handle post type check.
+		/** @var string $plugin_url */
 		$plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
-		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
+		/** @var string $version */
+		$version = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-editor',
 			$plugin_url . 'assets/js/editor.js',
@@ -193,8 +195,10 @@ final class Shifter_Future_Publish {
 
 		$post_type = $screen->post_type;
 
+		/** @var string $plugin_url */
 		$plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
-		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
+		/** @var string $version */
+		$version = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-classic-editor',
 			$plugin_url . 'assets/js/classic-editor.js',
@@ -245,7 +249,7 @@ final class Shifter_Future_Publish {
 		}
 
 		// phpcs:ignore WordPress.WP.DeprecatedParameters._future_post_hookParam1Found -- Required for compatibility.
-		_future_post_hook( $post_id );
+		_future_post_hook( $post_id, $post );
 	}
 
 	/**
