@@ -62,27 +62,17 @@ final class Shifter_Future_Publish {
     }
 
     private function init_hooks(): void {
+        $this->register_admin_hooks();
+
         if (!$this->settings['enabled']) {
-            $this->register_admin_hooks();
             return;
         }
 
-        // Core Functionality Layer 1: Intercept post save to force publish status
+        // Core: Intercept post save to force publish status
         add_filter('wp_insert_post_data', $this->force_publish_status(...), 10, 2);
 
-        // Core Functionality Layer 2: Handle future_{post_type} hooks
+        // Fallback: Handle future_{post_type} hooks for edge cases
         add_action('init', $this->setup_future_hooks(...));
-
-        // Core Functionality Layer 3: Filter get_post_status
-        add_filter('get_post_status', $this->filter_post_status(...), 10, 2);
-
-        // Core Functionality Layer 4: Handle single post 404 prevention
-        add_filter('the_posts', $this->show_future_posts(...), 10, 2);
-
-        // Core Functionality Layer 5: Modify SQL queries to include future posts
-        add_filter('posts_where', $this->modify_posts_where(...), 10, 2);
-
-        $this->register_admin_hooks();
     }
 
     private function register_admin_hooks(): void {
@@ -229,146 +219,6 @@ final class Shifter_Future_Publish {
         }
 
         return $data;
-    }
-
-    /**
-     * Filter post status to return 'publish' for future posts of enabled types.
-     */
-    public function filter_post_status(string $post_status, \WP_Post|int $post): string {
-        if (is_admin() && !wp_doing_ajax()) {
-            return $post_status;
-        }
-
-        $post_object = $post instanceof \WP_Post ? $post : get_post($post);
-        if (!$post_object instanceof \WP_Post) {
-            return $post_status;
-        }
-
-        if (!$this->is_enabled_post_type($post_object->post_type)) {
-            return $post_status;
-        }
-
-        return match ($post_status) {
-            'future' => 'publish',
-            default => $post_status,
-        };
-    }
-
-    /**
-     * Show future posts on single post pages to prevent 404 errors.
-     *
-     * @param array<\WP_Post> $posts    Array of post objects.
-     * @param \WP_Query       $wp_query The WP_Query instance.
-     * @return array<\WP_Post> Modified array of post objects.
-     */
-    public function show_future_posts(array $posts, \WP_Query $wp_query): array {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
-
-        if (!$wp_query->is_main_query() || !$wp_query->is_single()) {
-            return $posts;
-        }
-
-        if (!empty($posts)) {
-            // Clone posts to avoid modifying original WP_Post objects directly
-            $modified_posts = [];
-            foreach ($posts as $post) {
-                if ($post->post_status === 'future' && $this->is_enabled_post_type($post->post_type)) {
-                    $cloned_post = clone $post;
-                    $cloned_post->post_status = 'publish';
-                    $modified_posts[] = $cloned_post;
-                } else {
-                    $modified_posts[] = $post;
-                }
-            }
-            return $modified_posts;
-        }
-
-        $post_type_raw = $wp_query->get('post_type');
-        $post_type = is_string($post_type_raw) && $post_type_raw !== '' ? $post_type_raw : 'post';
-
-        if (!$this->is_enabled_post_type($post_type)) {
-            return $posts;
-        }
-
-        $post_name_raw = $wp_query->get('name');
-        if (!is_string($post_name_raw) || $post_name_raw === '') {
-            $post_name_raw = $wp_query->get($post_type);
-        }
-        $post_name = is_string($post_name_raw) ? $post_name_raw : '';
-
-        if ($post_name === '') {
-            return $posts;
-        }
-
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-        $future_post = $wpdb->get_row(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $wpdb->prepare(
-                "SELECT ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND post_status = 'future' LIMIT 1",
-                $post_name,
-                $post_type
-            )
-        );
-
-        if ($future_post instanceof \stdClass) {
-            $future_post->post_status = 'publish';
-            // Convert stdClass to WP_Post for proper type handling
-            return [new \WP_Post($future_post)];
-        }
-
-        return $posts;
-    }
-
-    /**
-     * Modify SQL WHERE clause to include future posts in queries.
-     */
-    public function modify_posts_where(string $where, \WP_Query $wp_query): string {
-        /** @var \wpdb $wpdb */
-        global $wpdb;
-
-        if (is_admin() && !wp_doing_ajax()) {
-            return $where;
-        }
-
-        $post_type_raw = $wp_query->get('post_type');
-        $post_type = is_string($post_type_raw) && $post_type_raw !== '' ? $post_type_raw : 'post';
-        $post_types = is_array($post_type_raw) ? $post_type_raw : [$post_type];
-
-        $should_modify = false;
-        foreach ($post_types as $type) {
-            if (is_string($type) && $this->is_enabled_post_type($type)) {
-                $should_modify = true;
-                break;
-            }
-        }
-
-        if (!$should_modify) {
-            return $where;
-        }
-
-        // Pattern 1: With table prefix
-        $where = str_replace(
-            "{$wpdb->posts}.post_status = 'publish'",
-            "{$wpdb->posts}.post_status IN ('publish', 'future')",
-            $where
-        );
-
-        // Pattern 2: Without table prefix
-        $where = preg_replace(
-            "/(?<![a-zA-Z0-9_.])post_status\s*=\s*'publish'/",
-            "post_status IN ('publish', 'future')",
-            $where
-        ) ?: $where;
-
-        // Pattern 3: IN clause with only 'publish'
-        $where = preg_replace(
-            "/post_status\s+IN\s*\(\s*'publish'\s*\)/i",
-            "post_status IN ('publish', 'future')",
-            $where
-        ) ?: $where;
-
-        return $where;
     }
 
     /**
@@ -527,18 +377,6 @@ final class Shifter_Future_Publish {
                 submit_button();
                 ?>
             </form>
-
-            <div class="card" style="max-width: 800px; margin-top: 20px;">
-                <h2><?php esc_html_e('How it works', 'shifter-future-publish'); ?></h2>
-                <p><?php esc_html_e('This plugin uses multiple layers to ensure future-dated posts are treated as published:', 'shifter-future-publish'); ?></p>
-                <ol>
-                    <li><strong><?php esc_html_e('Post Save Interception:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('When saving a post with a future date, the status is changed from "future" to "publish" before saving to the database.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Future Post Hooks:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('Post-type-specific hooks ensure any posts that slip through are immediately published.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Status Filter:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('The get_post_status filter ensures future posts appear as published in all contexts.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('Query Modification:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('SQL queries are modified to include future posts in archive and listing pages.', 'shifter-future-publish'); ?></li>
-                    <li><strong><?php esc_html_e('404 Prevention:', 'shifter-future-publish'); ?></strong> <?php esc_html_e('Single post pages for future posts will not return 404 errors.', 'shifter-future-publish'); ?></li>
-                </ol>
-            </div>
         </div>
         <?php
     }
