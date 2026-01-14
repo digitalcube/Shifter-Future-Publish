@@ -1,5 +1,12 @@
 <?php
 /**
+ * Shifter Future Publish
+ *
+ * Allows publishing posts with future dates immediately. Useful for Shifter
+ * static site generation to include future-dated content in artifacts.
+ *
+ * @package Shifter_Future_Publish
+ *
  * Plugin Name: Shifter Future Publish
  * Plugin URI: https://github.com/digitalcube/shifter-future-publish
  * Description: Allows publishing posts with future dates immediately. Useful for Shifter static site generation to include future-dated content in artifacts.
@@ -31,22 +38,54 @@ if ( ! defined( 'SHIFTER_FUTURE_PUBLISH_PLUGIN_URL' ) ) {
 	define( 'SHIFTER_FUTURE_PUBLISH_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
+/**
+ * Main plugin class for Shifter Future Publish.
+ *
+ * Handles the core functionality of allowing posts with future dates
+ * to be published immediately instead of being scheduled.
+ *
+ * @since 1.0.0
+ */
 final class Shifter_Future_Publish {
 
+	/**
+	 * Singleton instance.
+	 *
+	 * @var self|null
+	 */
 	private static ?self $instance = null;
 
-	/** @var array{enabled: bool, post_types: array<string>} */
+	/**
+	 * Plugin settings.
+	 *
+	 * @var array{enabled: bool, post_types: array<string>}
+	 */
 	private array $settings;
 
+	/**
+	 * Get the singleton instance.
+	 *
+	 * @return self Plugin instance.
+	 */
 	public static function get_instance(): self {
 		return self::$instance ??= new self();
 	}
 
+	/**
+	 * Constructor.
+	 *
+	 * Initializes the plugin by loading settings and registering hooks.
+	 */
 	private function __construct() {
 		$this->load_settings();
 		$this->init_hooks();
 	}
 
+	/**
+	 * Load plugin settings from the database.
+	 *
+	 * @return void
+	 */
 	private function load_settings(): void {
 		$defaults       = array(
 			'enabled'    => true,
@@ -61,6 +100,11 @@ final class Shifter_Future_Publish {
 		);
 	}
 
+	/**
+	 * Initialize WordPress hooks.
+	 *
+	 * @return void
+	 */
 	private function init_hooks(): void {
 		$this->register_admin_hooks();
 
@@ -68,13 +112,18 @@ final class Shifter_Future_Publish {
 			return;
 		}
 
-		// Core: Intercept post save to force publish status
+		// Core: Intercept post save to force publish status.
 		add_filter( 'wp_insert_post_data', $this->force_publish_status( ... ), 10, 2 );
 
-		// Fallback: Handle future_{post_type} hooks for edge cases
+		// Fallback: Handle future_{post_type} hooks for edge cases.
 		add_action( 'init', $this->setup_future_hooks( ... ) );
 	}
 
+	/**
+	 * Register admin-related hooks.
+	 *
+	 * @return void
+	 */
 	private function register_admin_hooks(): void {
 		add_action( 'admin_menu', $this->add_admin_menu( ... ) );
 		add_action( 'admin_init', $this->register_settings( ... ) );
@@ -85,6 +134,8 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Enqueue block editor assets.
+	 *
+	 * @return void
 	 */
 	public function enqueue_editor_assets(): void {
 		$screen = get_current_screen();
@@ -92,16 +143,14 @@ final class Shifter_Future_Publish {
 			return;
 		}
 
-		// Skip if plugin is disabled
+		// Skip if plugin is disabled.
 		if ( ! $this->settings['enabled'] ) {
 			return;
 		}
 
-		// Always enqueue and let JS handle post type check
-		/** @var string $plugin_url */
+		// Always enqueue and let JS handle post type check.
 		$plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
-		/** @var string $version */
-		$version = SHIFTER_FUTURE_PUBLISH_VERSION;
+		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-editor',
 			$plugin_url . 'assets/js/editor.js',
@@ -122,9 +171,12 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Enqueue classic editor assets.
+	 *
+	 * @param string $hook Current admin page hook.
+	 * @return void
 	 */
 	public function enqueue_classic_editor_assets( string $hook ): void {
-		// Only load on post edit screens
+		// Only load on post edit screens.
 		if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
 			return;
 		}
@@ -134,17 +186,15 @@ final class Shifter_Future_Publish {
 			return;
 		}
 
-		// Skip if block editor is active
+		// Skip if block editor is active.
 		if ( $screen->is_block_editor() ) {
 			return;
 		}
 
 		$post_type = $screen->post_type;
 
-		/** @var string $plugin_url */
 		$plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
-		/** @var string $version */
-		$version = SHIFTER_FUTURE_PUBLISH_VERSION;
+		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-classic-editor',
 			$plugin_url . 'assets/js/classic-editor.js',
@@ -180,6 +230,9 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Handle future_post action for non-enabled post types.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
 	 */
 	public function handle_future_post( int $post_id ): void {
 		$post = get_post( $post_id );
@@ -191,11 +244,15 @@ final class Shifter_Future_Publish {
 			return;
 		}
 
-		_future_post_hook( $post_id, $post );
+		// phpcs:ignore WordPress.WP.DeprecatedParameters._future_post_hookParam1Found -- Required for compatibility.
+		_future_post_hook( $post_id );
 	}
 
 	/**
 	 * Publish future post immediately.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
 	 */
 	public function publish_future_post_now( int $post_id ): void {
 		wp_publish_post( $post_id );
@@ -205,16 +262,16 @@ final class Shifter_Future_Publish {
 	 * Force publish status for future-dated posts of enabled post types.
 	 *
 	 * @param array<string, mixed> $data    Post data array.
-	 * @param array<string, mixed> $postarr Raw post data array.
+	 * @param array<string, mixed> $postarr Raw post data array (unused but required by filter).
 	 * @return array<string, mixed> Modified post data.
 	 */
-	public function force_publish_status( array $data, array $postarr ): array {
+	public function force_publish_status( array $data, array $postarr ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
 		$post_type = isset( $data['post_type'] ) && is_string( $data['post_type'] ) ? $data['post_type'] : '';
 		if ( ! $this->is_enabled_post_type( $post_type ) ) {
 			return $data;
 		}
 
-		if ( $data['post_status'] === 'future' ) {
+		if ( 'future' === $data['post_status'] ) {
 			$data['post_status'] = 'publish';
 		}
 
@@ -223,6 +280,9 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Check if a post type is enabled for future publishing.
+	 *
+	 * @param string $post_type Post type name.
+	 * @return bool True if enabled, false otherwise.
 	 */
 	private function is_enabled_post_type( string $post_type ): bool {
 		return in_array( $post_type, $this->settings['post_types'], true );
@@ -284,12 +344,10 @@ final class Shifter_Future_Publish {
 	public function sanitize_settings( ?array $input ): array {
 		$input ??= array();
 
-		/** @var array<string, \WP_Post_Type> $all_post_types */
 		$all_post_types   = get_post_types( array( 'public' => true ), 'names' );
 		$valid_post_types = array_keys( $all_post_types );
 		$input_post_types = isset( $input['post_types'] ) && is_array( $input['post_types'] ) ? $input['post_types'] : array();
-		/** @var array<string> $post_types */
-		$post_types = array_values(
+		$post_types       = array_values(
 			array_filter(
 				array_intersect( $input_post_types, $valid_post_types ),
 				'is_string'
@@ -311,12 +369,14 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Render enabled checkbox field.
+	 *
+	 * @return void
 	 */
 	public function render_enabled_field(): void {
 		$checked = $this->settings['enabled'] ? 'checked' : '';
 		printf(
 			'<label><input type="checkbox" name="shifter_future_publish_settings[enabled]" value="1" %s> %s</label>',
-			$checked,
+			esc_attr( $checked ),
 			esc_html__( 'Enable future date publishing', 'shifter-future-publish' )
 		);
 		printf(
@@ -327,6 +387,8 @@ final class Shifter_Future_Publish {
 
 	/**
 	 * Render post types checkboxes field.
+	 *
+	 * @return void
 	 */
 	public function render_post_types_field(): void {
 		$post_types = get_post_types( array( 'public' => true ), 'objects' );
@@ -336,7 +398,7 @@ final class Shifter_Future_Publish {
 			printf(
 				'<label style="display: block; margin-bottom: 5px;"><input type="checkbox" name="shifter_future_publish_settings[post_types][]" value="%s" %s> %s <code>(%s)</code></label>',
 				esc_attr( $post_type->name ),
-				$checked,
+				esc_attr( $checked ),
 				esc_html( $post_type->label ),
 				esc_html( $post_type->name )
 			);
@@ -409,7 +471,7 @@ final class Shifter_Future_Publish {
 	}
 }
 
-// Initialize the plugin
+// Initialize the plugin.
 add_action(
 	'plugins_loaded',
 	static function (): void {
@@ -417,7 +479,7 @@ add_action(
 	}
 );
 
-// Activation hook
+// Activation hook.
 register_activation_hook(
 	__FILE__,
 	static function (): void {
@@ -432,11 +494,11 @@ register_activation_hook(
 	}
 );
 
-// Deactivation hook
+// Deactivation hook.
 register_deactivation_hook(
 	__FILE__,
 	static function (): void {
-		// Optionally clean up settings on deactivation
-		// delete_option('shifter_future_publish_settings');
+		// Optionally clean up settings on deactivation.
+		// delete_option('shifter_future_publish_settings');.
 	}
 );
