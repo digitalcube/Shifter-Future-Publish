@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 Requires PHP: 8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -71,6 +71,12 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 1. Plugin settings page
 
 == Changelog ==
+
+= 2.1.1 =
+* Added: GitHub Actions CI workflow for automated PHPStan and PHPCS testing on PRs
+* Changed: PHP requirement updated from 8.0 to 8.1 (required for first-class callable syntax)
+* Fixed: PHPStan configuration to properly handle plugin constants
+* Fixed: PHPCS file naming exception for main plugin file
 
 = 2.1.0 =
 * Major: Simplified codebase architecture (5 layers to 2 layers)
@@ -146,6 +152,9 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 * Compatible with WordPress 6.7
 
 == Upgrade Notice ==
+
+= 2.1.1 =
+Added CI workflow for automated code quality checks. PHP requirement updated to 8.1 to match the first-class callable syntax already in use.
 
 = 2.1.0 =
 Major simplification of the codebase. Removed redundant fallback mechanisms for a cleaner, more maintainable architecture. No breaking changes - all existing functionality preserved.
