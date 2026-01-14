@@ -53,7 +53,12 @@ final class Shifter_Future_Publish {
             'post_types' => ['post'],
         ];
         $saved = get_option('shifter_future_publish_settings', []);
-        $this->settings = wp_parse_args($saved, $defaults);
+        $saved_array = is_array($saved) ? $saved : [];
+        $parsed = wp_parse_args($saved_array, $defaults);
+        $this->settings = [
+            'enabled' => (bool) ($parsed['enabled'] ?? true),
+            'post_types' => is_array($parsed['post_types'] ?? null) ? array_values(array_filter($parsed['post_types'], 'is_string')) : ['post'],
+        ];
     }
 
     private function init_hooks(): void {
@@ -103,11 +108,15 @@ final class Shifter_Future_Publish {
         }
 
         // Always enqueue and let JS handle post type check
+        /** @var string $plugin_url */
+        $plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
+        /** @var string $version */
+        $version = SHIFTER_FUTURE_PUBLISH_VERSION;
         wp_enqueue_script(
             'shifter-future-publish-editor',
-            SHIFTER_FUTURE_PUBLISH_PLUGIN_URL . 'assets/js/editor.js',
+            $plugin_url . 'assets/js/editor.js',
             ['wp-data', 'wp-editor', 'wp-i18n'],
-            SHIFTER_FUTURE_PUBLISH_VERSION,
+            $version,
             true
         );
 
@@ -136,17 +145,21 @@ final class Shifter_Future_Publish {
         }
 
         // Skip if block editor is active
-        if (method_exists($screen, 'is_block_editor') && $screen->is_block_editor()) {
+        if ($screen->is_block_editor()) {
             return;
         }
 
-        $post_type = $screen->post_type ?? 'post';
+        $post_type = $screen->post_type;
 
+        /** @var string $plugin_url */
+        $plugin_url = SHIFTER_FUTURE_PUBLISH_PLUGIN_URL;
+        /** @var string $version */
+        $version = SHIFTER_FUTURE_PUBLISH_VERSION;
         wp_enqueue_script(
             'shifter-future-publish-classic-editor',
-            SHIFTER_FUTURE_PUBLISH_PLUGIN_URL . 'assets/js/classic-editor.js',
+            $plugin_url . 'assets/js/classic-editor.js',
             ['jquery'],
-            SHIFTER_FUTURE_PUBLISH_VERSION,
+            $version,
             true
         );
 
@@ -188,21 +201,14 @@ final class Shifter_Future_Publish {
             return;
         }
 
-        _future_post_hook($post_id);
+        _future_post_hook($post_id, $post);
     }
 
     /**
      * Publish future post immediately.
      */
     public function publish_future_post_now(int $post_id): void {
-        $result = wp_publish_post($post_id);
-        if (is_wp_error($result)) {
-            error_log(sprintf(
-                'Shifter Future Publish: Failed to publish post %d - %s',
-                $post_id,
-                $result->get_error_message()
-            ));
-        }
+        wp_publish_post($post_id);
     }
 
     /**
@@ -213,7 +219,8 @@ final class Shifter_Future_Publish {
      * @return array<string, mixed> Modified post data.
      */
     public function force_publish_status(array $data, array $postarr): array {
-        if (!$this->is_enabled_post_type($data['post_type'] ?? '')) {
+        $post_type = isset($data['post_type']) && is_string($data['post_type']) ? $data['post_type'] : '';
+        if (!$this->is_enabled_post_type($post_type)) {
             return $data;
         }
 
@@ -255,6 +262,7 @@ final class Shifter_Future_Publish {
      * @return array<\WP_Post> Modified array of post objects.
      */
     public function show_future_posts(array $posts, \WP_Query $wp_query): array {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         if (!$wp_query->is_main_query() || !$wp_query->is_single()) {
@@ -276,20 +284,28 @@ final class Shifter_Future_Publish {
             return $modified_posts;
         }
 
-        $post_type = $wp_query->get('post_type') ?: 'post';
+        $post_type_raw = $wp_query->get('post_type');
+        $post_type = is_string($post_type_raw) && $post_type_raw !== '' ? $post_type_raw : 'post';
 
         if (!$this->is_enabled_post_type($post_type)) {
             return $posts;
         }
 
-        $post_name = $wp_query->get('name') ?: $wp_query->get($post_type);
+        $post_name_raw = $wp_query->get('name');
+        if (!is_string($post_name_raw) || $post_name_raw === '') {
+            $post_name_raw = $wp_query->get($post_type);
+        }
+        $post_name = is_string($post_name_raw) ? $post_name_raw : '';
 
-        if (empty($post_name)) {
+        if ($post_name === '') {
             return $posts;
         }
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $future_post = $wpdb->get_row(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $wpdb->prepare(
+                // @phpstan-ignore-next-line
                 "SELECT ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND post_status = 'future' LIMIT 1",
                 $post_name,
                 $post_type
@@ -309,20 +325,24 @@ final class Shifter_Future_Publish {
      * Modify SQL WHERE clause to include future posts in queries.
      */
     public function modify_posts_where(string $where, \WP_Query $wp_query): string {
+        /** @var \wpdb $wpdb */
         global $wpdb;
 
         if (is_admin() && !wp_doing_ajax()) {
             return $where;
         }
 
-        $post_type = $wp_query->get('post_type') ?: 'post';
-        $post_types = is_array($post_type) ? $post_type : [$post_type];
+        $post_type_raw = $wp_query->get('post_type');
+        $post_type = is_string($post_type_raw) && $post_type_raw !== '' ? $post_type_raw : 'post';
+        $post_types = is_array($post_type_raw) ? $post_type_raw : [$post_type];
 
-        $should_modify = array_reduce(
-            $post_types,
-            fn(bool $carry, string $type): bool => $carry || $this->is_enabled_post_type($type),
-            false
-        );
+        $should_modify = false;
+        foreach ($post_types as $type) {
+            if (is_string($type) && $this->is_enabled_post_type($type)) {
+                $should_modify = true;
+                break;
+            }
+        }
 
         if (!$should_modify) {
             return $where;
@@ -415,10 +435,15 @@ final class Shifter_Future_Publish {
     public function sanitize_settings(?array $input): array {
         $input ??= [];
 
-        $valid_post_types = array_keys(get_post_types(['public' => true], 'names'));
-        $post_types = isset($input['post_types']) && is_array($input['post_types'])
-            ? array_values(array_intersect($input['post_types'], $valid_post_types))
-            : [];
+        /** @var array<string, \WP_Post_Type> $all_post_types */
+        $all_post_types = get_post_types(['public' => true], 'names');
+        $valid_post_types = array_keys($all_post_types);
+        $input_post_types = isset($input['post_types']) && is_array($input['post_types']) ? $input['post_types'] : [];
+        /** @var array<string> $post_types */
+        $post_types = array_values(array_filter(
+            array_intersect($input_post_types, $valid_post_types),
+            'is_string'
+        ));
 
         return [
             'enabled' => !empty($input['enabled']),
@@ -546,7 +571,9 @@ final class Shifter_Future_Publish {
 }
 
 // Initialize the plugin
-add_action('plugins_loaded', static fn(): Shifter_Future_Publish => Shifter_Future_Publish::get_instance());
+add_action('plugins_loaded', static function(): void {
+    Shifter_Future_Publish::get_instance();
+});
 
 // Activation hook
 register_activation_hook(__FILE__, static function(): void {
