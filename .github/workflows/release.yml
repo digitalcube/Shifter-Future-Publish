@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -14,18 +13,84 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Get version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Get release notes
+        id: release_notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get release body from GitHub API
+          RELEASE_BODY=$(gh release view "v${{ steps.version.outputs.version }}" --json body -q '.body')
+          
+          # Save to file for processing
+          echo "$RELEASE_BODY" > /tmp/release_notes.txt
+          
+          # Create changelog entry for readme.txt (WordPress format)
+          echo "= ${{ steps.version.outputs.version }} =" > /tmp/changelog_txt.txt
+          # Convert markdown list to WordPress format
+          echo "$RELEASE_BODY" | sed 's/^- /* /' | sed 's/^* /* /' >> /tmp/changelog_txt.txt
+          echo "" >> /tmp/changelog_txt.txt
+          
+          # Create changelog entry for README.md (Japanese markdown format)
+          echo "### ${{ steps.version.outputs.version }}" > /tmp/changelog_md.txt
+          echo "" >> /tmp/changelog_md.txt
+          echo "$RELEASE_BODY" >> /tmp/changelog_md.txt
+          echo "" >> /tmp/changelog_md.txt
 
       - name: Update plugin version
         run: |
           # Update shifter-future-publish.php
           sed -i "s/Version: .*/Version: ${{ steps.version.outputs.version }}/" shifter-future-publish.php
           sed -i "s/define('SHIFTER_FUTURE_PUBLISH_VERSION', '.*')/define('SHIFTER_FUTURE_PUBLISH_VERSION', '${{ steps.version.outputs.version }}')/" shifter-future-publish.php
-          # Update readme.txt
+          # Update readme.txt stable tag
           sed -i "s/Stable tag: .*/Stable tag: ${{ steps.version.outputs.version }}/" readme.txt
+
+      - name: Update changelog in readme.txt
+        run: |
+          # Insert new changelog entry after "== Changelog ==" line
+          CHANGELOG_ENTRY=$(cat /tmp/changelog_txt.txt)
+          # Use awk to insert after the changelog header
+          awk -v entry="$CHANGELOG_ENTRY" '
+            /^== Changelog ==/ {
+              print
+              getline
+              print
+              print entry
+              next
+            }
+            {print}
+          ' readme.txt > readme.txt.tmp && mv readme.txt.tmp readme.txt
+
+      - name: Update changelog in README.md
+        run: |
+          # Insert new changelog entry after "## 変更履歴" line
+          CHANGELOG_ENTRY=$(cat /tmp/changelog_md.txt)
+          # Use awk to insert after the changelog header
+          awk -v entry="$CHANGELOG_ENTRY" '
+            /^## 変更履歴/ {
+              print
+              getline
+              print
+              print entry
+              next
+            }
+            {print}
+          ' README.md > README.md.tmp && mv README.md.tmp README.md
+
+      - name: Commit and push version updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add shifter-future-publish.php readme.txt README.md
+          git commit -m "chore: Update version to ${{ steps.version.outputs.version }} and add changelog"
+          git push origin main
 
       - name: Create release package
         run: |
@@ -39,8 +104,10 @@ jobs:
             -x "*.git*" \
             -x "*.DS_Store"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/shifter-future-publish-${{ steps.version.outputs.version }}.zip
-          generate_release_notes: true
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "v${{ steps.version.outputs.version }}" \
+            dist/shifter-future-publish-${{ steps.version.outputs.version }}.zip \
+            --clobber
