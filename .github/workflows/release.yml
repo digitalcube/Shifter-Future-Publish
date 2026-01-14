@@ -21,8 +21,11 @@ jobs:
 
       - name: Update plugin version
         run: |
+          # Update shifter-future-publish.php
           sed -i "s/Version: .*/Version: ${{ steps.version.outputs.version }}/" shifter-future-publish.php
           sed -i "s/define('SHIFTER_FUTURE_PUBLISH_VERSION', '.*')/define('SHIFTER_FUTURE_PUBLISH_VERSION', '${{ steps.version.outputs.version }}')/" shifter-future-publish.php
+          # Update readme.txt
+          sed -i "s/Stable tag: .*/Stable tag: ${{ steps.version.outputs.version }}/" readme.txt
 
       - name: Create release package
         run: |
