@@ -153,7 +153,7 @@ final class Shifter_Future_Publish {
 		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-editor',
-			$plugin_url . 'assets/js/editor.js', // @phpstan-ignore binaryOp.invalid
+			$plugin_url . 'assets/js/editor.js',
 			array( 'wp-data', 'wp-editor', 'wp-i18n' ),
 			$version,
 			true
@@ -197,7 +197,7 @@ final class Shifter_Future_Publish {
 		$version    = SHIFTER_FUTURE_PUBLISH_VERSION;
 		wp_enqueue_script(
 			'shifter-future-publish-classic-editor',
-			$plugin_url . 'assets/js/classic-editor.js', // @phpstan-ignore binaryOp.invalid
+			$plugin_url . 'assets/js/classic-editor.js',
 			array( 'jquery' ),
 			$version,
 			true
