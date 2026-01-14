@@ -77,6 +77,13 @@ Shifter のアーティファクト生成で未来日の記事を含めたい場
 
 ## 変更履歴
 
+### 2.1.2
+
+## What's Changed
+* feat: Auto-update changelog from GitHub Release Notes by @devin-ai-integration[bot] in https://github.com/digitalcube/Shifter-Future-Publish/pull/17
+
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.1...v2.1.2
 ### 2.1.0
 
 - コードベースの大幅な簡略化（5層→2層アーキテクチャ）

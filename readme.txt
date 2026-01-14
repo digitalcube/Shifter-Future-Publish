@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.1.0
+Stable tag: 2.1.2
 Requires PHP: 8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -72,6 +72,12 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 
 == Changelog ==
 
+= 2.1.2 =
+## What's Changed
+* feat: Auto-update changelog from GitHub Release Notes by @devin-ai-integration[bot] in https://github.com/digitalcube/Shifter-Future-Publish/pull/17
+
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.1...v2.1.2
 = 2.1.0 =
 * Major: Simplified codebase architecture (5 layers to 2 layers)
 * Removed: Redundant fallback mechanisms (get_post_status, the_posts, posts_where filters)
