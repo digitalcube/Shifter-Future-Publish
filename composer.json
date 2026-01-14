@@ -1,0 +1,8 @@
+{
+    "name": "digitalcube/shifter-future-publish",
+    "type": "wordpress-plugin",
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "szepeviktor/phpstan-wordpress": "^2.0"
+    }
+}
