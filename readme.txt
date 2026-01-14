@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.0.5
+Stable tag: 2.1.0
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -22,17 +22,14 @@ This plugin is particularly useful for Shifter static site generation, where you
 * Configure which post types should allow future date publishing
 * Simple admin settings page
 * Compatible with Shifter static site generation
-* Multiple layers of protection to ensure future posts are treated as published
+* Simple and efficient architecture
 
 = How It Works =
 
-This plugin uses multiple layers to ensure future-dated posts are treated as published:
+This plugin uses a simple 2-layer architecture to ensure future-dated posts are treated as published:
 
-1. **Post Save Interception** - When saving a post with a future date, the status is changed from "future" to "publish" before saving to the database.
-2. **Future Post Hooks** - Post-type-specific hooks ensure any posts that slip through are immediately published.
-3. **Status Filter** - The get_post_status filter ensures future posts appear as published in all contexts.
-4. **Query Modification** - SQL queries are modified to include future posts in archive and listing pages.
-5. **404 Prevention** - Single post pages for future posts will not return 404 errors.
+1. **Post Save Interception (Primary)** - Uses the `wp_insert_post_data` filter to change the status from "future" to "publish" before saving to the database.
+2. **Future Post Hooks (Fallback)** - Post-type-specific hooks (`future_{post_type}`) handle edge cases.
 
 = Use Cases =
 
@@ -51,7 +48,7 @@ This plugin uses multiple layers to ensure future-dated posts are treated as pub
 
 = How does this plugin work? =
 
-When you publish a post with a future date, WordPress normally sets the post status to "future" and schedules it for publication at the specified date. This plugin intercepts that process using multiple layers (post save interception, future post hooks, status filters, query modification, and 404 prevention) to ensure the post is treated as "publish" status, making it immediately visible while keeping the future date.
+When you publish a post with a future date, WordPress normally sets the post status to "future" and schedules it for publication at the specified date. This plugin intercepts that process using the `wp_insert_post_data` filter to change the status to "publish" before saving to the database, making it immediately visible while keeping the future date.
 
 = Will this affect my existing scheduled posts? =
 
@@ -74,6 +71,15 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 1. Plugin settings page
 
 == Changelog ==
+
+= 2.1.0 =
+* Major: Simplified codebase architecture (5 layers to 2 layers)
+* Removed: Redundant fallback mechanisms (get_post_status, the_posts, posts_where filters)
+* Improved: JavaScript files significantly reduced (editor.js: 76%, classic-editor.js: 75%)
+* Added: PHPStan (level max) compliance for better type safety
+* Added: PHPCS (WordPress Coding Standards) compliance
+* Added: PHPDoc comments for all classes and methods
+* Fixed: `_future_post_hook()` call to pass correct parameters per WordPress API
 
 = 2.0.5 =
 * Fixed: While loop assignment syntax for better code clarity
@@ -140,6 +146,9 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 * Compatible with WordPress 6.7
 
 == Upgrade Notice ==
+
+= 2.1.0 =
+Major simplification of the codebase. Removed redundant fallback mechanisms for a cleaner, more maintainable architecture. No breaking changes - all existing functionality preserved.
 
 = 2.0.0 =
 Major update requiring PHP 8.0+. Complete rewrite using modern PHP 8 features for better performance and type safety. Required for Shifter environments running PHP 8.
