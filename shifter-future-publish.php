@@ -305,7 +305,6 @@ final class Shifter_Future_Publish {
         $future_post = $wpdb->get_row(
             // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $wpdb->prepare(
-                // @phpstan-ignore-next-line
                 "SELECT ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count FROM {$wpdb->posts} WHERE post_name = %s AND post_type = %s AND post_status = 'future' LIMIT 1",
                 $post_name,
                 $post_type
