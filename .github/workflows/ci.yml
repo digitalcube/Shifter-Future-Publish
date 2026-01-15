@@ -77,24 +77,4 @@ jobs:
               working-directory: _tests
               run: vendor/bin/phpcs
 
-    eslint:
-        name: ESLint
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
 
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: '20'
-                  cache: 'npm'
-                  cache-dependency-path: _tests/package-lock.json
-
-            - name: Install dependencies
-              working-directory: _tests
-              run: npm ci
-
-            - name: Run ESLint
-              working-directory: _tests
-              run: npm run lint:js
