@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.1.2
+Stable tag: 2.1.3
 Requires PHP: 8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -72,6 +72,10 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 
 == Changelog ==
 
+= 2.1.3 =
+* refactor: Delete root Composer files and PHPStan config, and update the CI workflow to execute Composer and static analysis within the `_tests` directory. by @tekapo in https://github.com/digitalcube/Shifter-Future-Publish/pull/19
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.2...v2.1.3
 = 2.1.2 =
 ## What's Changed
 * feat: Auto-update changelog from GitHub Release Notes by @devin-ai-integration[bot] in https://github.com/digitalcube/Shifter-Future-Publish/pull/17

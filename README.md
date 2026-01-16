@@ -77,6 +77,11 @@ Shifter のアーティファクト生成で未来日の記事を含めたい場
 
 ## 変更履歴
 
+### 2.1.3
+
+* refactor: Delete root Composer files and PHPStan config, and update the CI workflow to execute Composer and static analysis within the `_tests` directory. by @tekapo in https://github.com/digitalcube/Shifter-Future-Publish/pull/19
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.2...v2.1.3
 ### 2.1.2
 
 ## What's Changed
