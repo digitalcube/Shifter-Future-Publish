@@ -85,6 +85,15 @@ Shifter のアーティファクト生成で未来日の記事を含めたい場
 
 ## 変更履歴
 
+### 2.1.4
+
+- 修正: `_future_post_hook` の `remove_action()` にコアの登録 priority（5）を指定しておらず解除が効いていなかった問題を修正（`publish_future_post` の cron イベントが残留する不具合）
+- 修正: `setup_future_hooks()` を `init` の priority 999 で実行し、`init` で登録されるカスタム投稿タイプも確実に対象になるように変更
+- 修正: `SHIFTER_FUTURE_PUBLISH_VERSION` 定数がプラグインのバージョンに関わらず 2.0.5 に固定されていた問題を修正（JS アセットのキャッシュバスティングが機能していなかった）
+- 追加: アンインストール時にプラグイン設定を削除する `uninstall.php`
+- 改善: 設定画面のリンク URL を `esc_url()` でエスケープ
+- ドキュメント: 対象投稿タイプの未来日投稿が RSS/Atom フィードと公開 REST API に露出する旨を明記
+
 ### 2.1.3
 
 * refactor: Delete root Composer files and PHPStan config, and update the CI workflow to execute Composer and static analysis within the `_tests` directory. by @tekapo in https://github.com/digitalcube/Shifter-Future-Publish/pull/19

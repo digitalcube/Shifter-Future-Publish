@@ -10,7 +10,7 @@
  * Plugin Name: Shifter Future Publish
  * Plugin URI: https://github.com/digitalcube/shifter-future-publish
  * Description: Allows publishing posts with future dates immediately. Useful for Shifter static site generation to include future-dated content in artifacts.
- * Version: 2.1.3
+ * Version: 2.1.4
  * Author: DigitalCube
  * Author URI: https://developer.getshifter.io/
  * License: GPL-2.0+
@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'SHIFTER_FUTURE_PUBLISH_VERSION' ) ) {
-	define( 'SHIFTER_FUTURE_PUBLISH_VERSION', '2.0.5' );
+	define( 'SHIFTER_FUTURE_PUBLISH_VERSION', '2.1.4' );
 }
 if ( ! defined( 'SHIFTER_FUTURE_PUBLISH_PLUGIN_DIR' ) ) {
 	define( 'SHIFTER_FUTURE_PUBLISH_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
