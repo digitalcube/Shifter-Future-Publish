@@ -3,7 +3,7 @@ Contributors: digitalcube
 Tags: shifter, future, publish, schedule, static site
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 2.1.3
+Stable tag: 2.1.4
 Requires PHP: 8.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -79,6 +79,14 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 1. Plugin settings page
 
 == Changelog ==
+
+= 2.1.4 =
+* Fixed: `remove_action()` for `_future_post_hook` did not specify the priority core registers it with (5), so the removal was a no-op and left stale `publish_future_post` cron events
+* Fixed: `setup_future_hooks()` now runs at `init` priority 999 so custom post types registered on `init` are covered
+* Fixed: `SHIFTER_FUTURE_PUBLISH_VERSION` constant was stuck at 2.0.5 regardless of the plugin version, so browsers/CDNs could not detect changes to the enqueued JS assets
+* Added: `uninstall.php` to delete plugin settings on uninstall
+* Improved: Escaped the settings page link URL with `esc_url()`
+* Docs: Clarified that future-dated posts of enabled post types are exposed in RSS/Atom feeds and the public REST API
 
 = 2.1.3 =
 * refactor: Delete root Composer files and PHPStan config, and update the CI workflow to execute Composer and static analysis within the `_tests` directory. by @tekapo in https://github.com/digitalcube/Shifter-Future-Publish/pull/19
@@ -164,6 +172,9 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 * Compatible with WordPress 6.7
 
 == Upgrade Notice ==
+
+= 2.1.4 =
+Recommended bug-fix release. Fixes a cache-busting bug (version constant was stuck at 2.0.5) and a no-op hook removal that left stale cron events. No breaking changes.
 
 = 2.1.0 =
 Major simplification of the codebase. Removed redundant fallback mechanisms for a cleaner, more maintainable architecture. No breaking changes - all existing functionality preserved.
