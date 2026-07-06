@@ -81,6 +81,13 @@ When the plugin is disabled, WordPress will revert to its default behavior. New 
 == Changelog ==
 
 = 2.1.4 =
+## What's Changed
+* Fix fatal error and no-op hook removal, harden security and safety by @plastikdreams in https://github.com/digitalcube/Shifter-Future-Publish/pull/20
+* chore: Bump version to 2.1.4 by @plastikdreams in https://github.com/digitalcube/Shifter-Future-Publish/pull/21
+
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.3...v2.1.4
+= 2.1.4 =
 * Fixed: `remove_action()` for `_future_post_hook` did not specify the priority core registers it with (5), so the removal was a no-op and left stale `publish_future_post` cron events
 * Fixed: `setup_future_hooks()` now runs at `init` priority 999 so custom post types registered on `init` are covered
 * Fixed: `SHIFTER_FUTURE_PUBLISH_VERSION` constant was stuck at 2.0.5 regardless of the plugin version, so browsers/CDNs could not detect changes to the enqueued JS assets

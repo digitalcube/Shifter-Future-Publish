@@ -87,6 +87,14 @@ Shifter のアーティファクト生成で未来日の記事を含めたい場
 
 ### 2.1.4
 
+## What's Changed
+* Fix fatal error and no-op hook removal, harden security and safety by @plastikdreams in https://github.com/digitalcube/Shifter-Future-Publish/pull/20
+* chore: Bump version to 2.1.4 by @plastikdreams in https://github.com/digitalcube/Shifter-Future-Publish/pull/21
+
+
+**Full Changelog**: https://github.com/digitalcube/Shifter-Future-Publish/compare/v2.1.3...v2.1.4
+### 2.1.4
+
 - 修正: `_future_post_hook` の `remove_action()` にコアの登録 priority（5）を指定しておらず解除が効いていなかった問題を修正（`publish_future_post` の cron イベントが残留する不具合）
 - 修正: `setup_future_hooks()` を `init` の priority 999 で実行し、`init` で登録されるカスタム投稿タイプも確実に対象になるように変更
 - 修正: `SHIFTER_FUTURE_PUBLISH_VERSION` 定数がプラグインのバージョンに関わらず 2.0.5 に固定されていた問題を修正（JS アセットのキャッシュバスティングが機能していなかった）
