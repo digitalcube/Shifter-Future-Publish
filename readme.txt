@@ -31,6 +31,10 @@ This plugin uses a simple 2-layer architecture to ensure future-dated posts are 
 1. **Post Save Interception (Primary)** - Uses the `wp_insert_post_data` filter to change the status from "future" to "publish" before saving to the database.
 2. **Future Post Hooks (Fallback)** - Post-type-specific hooks (`future_{post_type}`) handle edge cases.
 
+= Important: Content Exposure =
+
+When enabled, posts of the selected post types saved with a future date get real "publish" status and are visible everywhere on the front end. This includes not only archive and single pages, but also RSS/Atom feeds and the public REST API (e.g. `/wp-json/wp/v2/posts`), where the content becomes visible to anonymous visitors and search engines immediately. Make sure your content is ready to be public before saving it with a future date.
+
 = Use Cases =
 
 * Event websites where you want to display upcoming events with future dates
@@ -61,6 +65,10 @@ Yes, you can configure which post types should allow future date publishing in t
 = Is this plugin compatible with Shifter? =
 
 Yes, this plugin is specifically designed to work with Shifter static site generation. Posts with future dates will be included in the generated artifacts.
+
+= Are future posts exposed in feeds and the REST API? =
+
+Yes. Future-dated posts of the enabled post types are published immediately, so they are included in RSS/Atom feeds and in public REST API responses (e.g. `/wp-json/wp/v2/posts`), just like any other published post. Do not use future dates for content that must stay private until its date.
 
 = What happens if I disable the plugin? =
 

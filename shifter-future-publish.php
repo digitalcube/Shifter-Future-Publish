@@ -116,7 +116,9 @@ final class Shifter_Future_Publish {
 		add_filter( 'wp_insert_post_data', $this->force_publish_status( ... ), 10, 2 );
 
 		// Fallback: Handle future_{post_type} hooks for edge cases.
-		add_action( 'init', $this->setup_future_hooks( ... ) );
+		// Core registers _future_post_hook during register_post_type, so run
+		// late enough to catch custom post types registered on init.
+		add_action( 'init', $this->setup_future_hooks( ... ), 999 );
 	}
 
 	/**
@@ -218,10 +220,12 @@ final class Shifter_Future_Publish {
 	 * Setup future post hooks for each enabled post type.
 	 */
 	public function setup_future_hooks(): void {
-		remove_action( 'future_post', '_future_post_hook' );
+		// Core registers _future_post_hook at priority 5 with 2 args;
+		// remove_action must match the priority or it is a no-op.
+		remove_action( 'future_post', '_future_post_hook', 5 );
 
 		foreach ( $this->settings['post_types'] as $post_type ) {
-			remove_action( "future_{$post_type}", '_future_post_hook' );
+			remove_action( "future_{$post_type}", '_future_post_hook', 5 );
 			add_action( "future_{$post_type}", $this->publish_future_post_now( ... ) );
 		}
 
@@ -454,7 +458,7 @@ final class Shifter_Future_Publish {
 	public function add_settings_link( array $links ): array {
 		$settings_link = sprintf(
 			'<a href="%s">%s</a>',
-			admin_url( 'options-general.php?page=shifter-future-publish' ),
+			esc_url( admin_url( 'options-general.php?page=shifter-future-publish' ) ),
 			__( 'Settings', 'shifter-future-publish' )
 		);
 		array_unshift( $links, $settings_link );
