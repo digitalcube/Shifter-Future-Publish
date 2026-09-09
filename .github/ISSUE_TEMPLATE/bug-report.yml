@@ -1,0 +1,184 @@
+name: "不具合報告 (Bug report)"
+description: "Shifter Future Publish の動作に関する問題を報告する / Report a problem with Shifter Future Publish"
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 報告前にお読みください / Please read first
+
+        ご報告ありがとうございます。調査を早く進めるために、できるだけ具体的にお書きください。
+        特に **再現手順** と **環境** が揃っていない報告は、こちらで再現できず調査を開始できません。
+
+        セキュリティ上の脆弱性については、公開 Issue ではなく非公開の経路でご連絡ください。
+
+        ---
+
+        Thanks for the report. The more concrete you can be, the faster we can act on it.
+        Without **reproduction steps** and **environment details** we cannot reproduce the
+        problem on our side, and the investigation cannot start.
+
+        For security vulnerabilities, please use a private channel rather than a public issue.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: 事前確認 / Prerequisites
+      options:
+        - label: "最新版の Shifter Future Publish で再現することを確認した / I confirmed this happens on the latest version of Shifter Future Publish"
+          required: true
+        - label: "同じ内容の Issue が既に無いか検索した / I searched for an existing issue about the same problem"
+          required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 症状 / What happens
+      description: |
+        実際に何が起きるかをお書きください。画面にメッセージが出る場合は、そのままの文言でお願いします。
+        スクリーンショットや画面録画も歓迎します。
+
+        Describe what actually happens. If a message appears on screen, please quote it verbatim.
+        Screenshots and screen recordings are welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した動作 / What you expected
+      description: |
+        本来どうなるはずだったかをお書きください。
+        Describe what you expected to happen instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順 / Steps to reproduce
+      description: |
+        こちらで同じ状態を作れるように、順を追ってお書きください。
+        「毎回起きる」「たまに起きる」「一度だけ起きた」も分かれば併記してください。
+
+        Please walk through it step by step so we can recreate the same state.
+        If you know whether it happens every time, intermittently, or only once, say so.
+      value: |
+        1.
+        2.
+        3.
+
+        再現頻度 / Frequency:
+    validations:
+      required: true
+
+  - type: textarea
+    id: plugin-settings
+    attributes:
+      label: プラグインの設定 / Plugin settings
+      description: |
+        設定 > Shifter Future Publish の内容をお書きください。
+        Please describe the contents of Settings > Shifter Future Publish.
+      value: |
+        - 有効化 / Enabled (チェックの有無 / checked or not):
+        - 対象の投稿タイプ / Selected post types:
+        - 問題が起きている投稿タイプ / Post type where the problem occurs:
+        - 該当投稿のステータス / Status of the affected post (公開済み / 予約 / 下書き など):
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境 / Environment
+      value: |
+        - WordPress:
+        - PHP:
+        - Shifter Future Publish:
+        - テーマ / Theme (名前とバージョン / name and version):
+        - ホスティング / Hosting (Shifter / その他 / other):
+        - エディター / Editor (ブロックエディター / 旧エディター / block or classic):
+        - ブラウザ / Browser:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: other-plugins
+    attributes:
+      label: 他のプラグインを無効化しても再現しますか / Does it still happen with other plugins disabled?
+      description: |
+        [Health Check & Troubleshooting](https://ja.wordpress.org/plugins/health-check/) の
+        トラブルシューティングモードを使うと、サイト訪問者に影響を与えずに自分のセッションだけで
+        プラグインを無効化できます。本番サイトでも安全に確認できます。
+
+        The Troubleshooting Mode of
+        [Health Check & Troubleshooting](https://wordpress.org/plugins/health-check/)
+        disables plugins only for your own session, so it is safe to try on a production site.
+      options:
+        - "再現する / Yes, it still happens"
+        - "再現しない（他のプラグインとの組み合わせで起きる） / No, it only happens with other plugins active"
+        - "未確認 / Not checked"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: default-theme
+    attributes:
+      label: デフォルトテーマでも再現しますか / Does it still happen on a default theme?
+      description: "Twenty Twenty-Five などに切り替えてご確認ください / Please try switching to e.g. Twenty Twenty-Five"
+      options:
+        - "再現する / Yes, it still happens"
+        - "再現しない（テーマとの組み合わせで起きる） / No, it only happens with our theme"
+        - "未確認 / Not checked"
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-log
+    attributes:
+      label: エラーログ / Error log
+      description: |
+        `wp-config.php` で以下を設定してから問題の操作を行い、`wp-content/debug.log` の内容を貼り付けてください。
+        `WP_DEBUG_DISPLAY` を無効にするのは、警告が画面や API レスポンスに混ざって本来の原因を隠すためです。
+        何も出力されなかった場合は「出力なし」とお書きください。
+
+        Set the following in `wp-config.php`, reproduce the problem, then paste the contents of
+        `wp-content/debug.log`. `WP_DEBUG_DISPLAY` must be off because printed warnings mix into
+        the page or API responses and mask the real cause. Write "no output" if the log stays empty.
+
+        ```php
+        define( 'WP_DEBUG', true );
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        ```
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: console
+    attributes:
+      label: ブラウザコンソールの出力 / Browser console output
+      description: |
+        管理画面での問題の場合、開発者ツールのコンソールに出ているエラーや警告を貼り付けてください。
+        1件も出ていない場合も、その旨をお書きください。それ自体が切り分けの手がかりになります。
+
+        For problems in the admin screens, paste any errors or warnings from the browser console.
+        If there are none at all, please say so explicitly — that is itself a useful signal.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 補足 / Anything else
+      description: |
+        いつから起きているか、直前に行った変更（更新・設定変更・移行など）、既に試したことなど、
+        判断材料になりそうなことがあればお書きください。
+
+        When it started, any change made just before it (updates, setting changes, migrations),
+        what you already tried — anything that might help.
+    validations:
+      required: false
