@@ -1,0 +1,235 @@
+name: "ブロックエディターが壊れる / コンフリクト報告 (Block editor breaks / Conflict report)"
+description: "有効化するとブロックエディターが動かなくなる、などの他プラグイン・テーマとの競合を報告する / Report a conflict with another plugin or theme, e.g. the block editor stops working when this plugin is active"
+title: "[Conflict] "
+labels: ["bug", "conflict", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## はじめにお読みください / Please read first
+
+        「Shifter Future Publish を有効化するとブロックエディターが使えなくなる」という症状は、
+        本プラグイン単体では再現しません（WordPress 7.1 / PHP 8.3 のクリーン環境で検証済み）。
+        原因はほぼ確実に **他のプラグインまたはテーマとの組み合わせ** にあります。
+
+        私たちの側からは、あなたのサイトに入っているプラグインの組み合わせを再現できません。
+        そのため **競合相手の特定は報告者ご自身にお願いしています**。
+        以下の手順は数十分で終わります。特定できていない報告は調査を開始できません。
+
+        ---
+
+        This plugin alone does not break the block editor (verified on a clean
+        WordPress 7.1 / PHP 8.3 install). The cause is almost certainly an
+        **interaction with another plugin or theme**.
+
+        We cannot reproduce your site's plugin combination on our side, so
+        **identifying the conflicting plugin is the reporter's task**. The steps
+        below take a few tens of minutes. We cannot start investigating a report
+        that has not gone through them.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: 事前確認 / Prerequisites
+      options:
+        - label: "本プラグインを無効化すると症状が消えることを確認した / I confirmed the symptom disappears when this plugin is deactivated"
+          required: true
+        - label: "本プラグインを再度有効化すると症状が再発することを確認した / I confirmed the symptom comes back when it is reactivated"
+          required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 症状 / Symptom
+      description: |
+        画面に表示されるメッセージを、そのままの文言でお書きください。スクリーンショットも歓迎します。
+        Please quote the on-screen message verbatim. Screenshots are welcome.
+      placeholder: |
+        例 / Example:
+        投稿の編集画面（ブロックエディター）で「編集しようとした項目はありません。削除されたのかもしれません。」と表示され、編集できない。旧エディターでは編集できる。
+    validations:
+      required: true
+
+  - type: input
+    id: post-types
+    attributes:
+      label: 影響を受ける投稿タイプ / Affected post types
+      description: "スラッグでお願いします / Please use slugs"
+      placeholder: "post, news"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境 / Environment
+      value: |
+        - WordPress:
+        - PHP:
+        - Shifter Future Publish:
+        - テーマ / Theme (名前とバージョン / name and version):
+        - ホスティング / Hosting (Shifter / その他 / other):
+        - ブラウザ / Browser:
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## 手順1: 競合相手の特定 / Step 1: Identify the conflicting plugin
+
+        [Health Check & Troubleshooting](https://ja.wordpress.org/plugins/health-check/)
+        プラグインの「トラブルシューティングモード」を使うと、**サイト訪問者に影響を与えずに**
+        自分のセッションだけでプラグインを個別に無効化できます。本番サイトでも安全に実施できます。
+
+        1. トラブルシューティングモードを開始する（全プラグインが無効・デフォルトテーマの状態になる）
+        2. Shifter Future Publish だけを有効化し、症状が出ないことを確認する
+        3. 残りのプラグインを **半分だけ** 有効化して、症状が出るか確認する
+           - 出た → 犯人はその半分の中にいる
+           - 出ない → 犯人はもう半分の中にいる
+        4. 犯人がいる側をさらに半分に割って、3 を繰り返す
+        5. 1つに絞れたら、そのプラグインを無効化・有効化して症状が連動することを確認する
+        6. プラグインで特定できなかった場合は、テーマをデフォルト（Twenty Twenty-Five など）に切り替えて確認する
+
+        プラグインが40個あっても、この二分探索なら 5〜6 回の切り替えで特定できます。
+
+        ---
+
+        Use the "Troubleshooting Mode" of the
+        [Health Check & Troubleshooting](https://wordpress.org/plugins/health-check/)
+        plugin. It disables plugins **only for your own session**, so it is safe to
+        run on a production site.
+
+        1. Enter troubleshooting mode (all plugins off, default theme).
+        2. Enable only Shifter Future Publish and confirm the symptom is absent.
+        3. Enable **half** of the remaining plugins and check again.
+           - Symptom appears → the culprit is in that half.
+           - Symptom absent → the culprit is in the other half.
+        4. Split the half that shows the symptom, and repeat step 3.
+        5. Once you are down to one plugin, toggle it off and on to confirm the
+           symptom follows it.
+        6. If no plugin is responsible, switch to a default theme (e.g. Twenty
+           Twenty-Five) and check again.
+
+        With 40 plugins this binary search takes only 5–6 toggles.
+
+  - type: input
+    id: culprit
+    attributes:
+      label: 競合しているプラグイン / テーマ / Conflicting plugin or theme
+      description: "名前とバージョン。特定できなかった場合は「特定できず」とお書きください / Name and version. Write \"not identified\" if you could not narrow it down."
+      placeholder: "Example Plugin 3.2.1"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## 手順2: 診断情報の採取 / Step 2: Collect diagnostics
+
+        競合状態を再現させたうえで、壊れている編集画面を開いた状態で採取してください。
+        Reproduce the conflict, open the broken edit screen, and collect the following.
+
+  - type: textarea
+    id: get-entity-record
+    attributes:
+      label: "診断1: getEntityRecord の戻り値 / Diagnostic 1: getEntityRecord result"
+      description: |
+        壊れている編集画面のブラウザコンソールで以下を実行し、結果を貼り付けてください。
+        Run this in the browser console on the broken edit screen and paste the result.
+
+        ```js
+        wp.data.select('core').getEntityRecord(
+          'postType',
+          wp.data.select('core/editor').getCurrentPostType(),
+          wp.data.select('core/editor').getCurrentPostId()
+        )
+        ```
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: rest-response
+    attributes:
+      label: "診断2: 投稿の REST レスポンス / Diagnostic 2: REST response for the post"
+      description: |
+        ネットワークタブで `/wp-json/wp/v2/<投稿タイプ>/<ID>?context=edit` のリクエストを探し、
+        **ステータスコード** と **レスポンス本文の先頭 500 文字程度（加工しない生のまま）** を貼り付けてください。
+        本文の `{` より前に余計な出力が混ざっていないかが重要なので、整形せずにお願いします。
+
+        In the Network tab, find the request to
+        `/wp-json/wp/v2/<post type>/<ID>?context=edit` and paste the **status code**
+        and the **first ~500 characters of the raw response body**. Do not pretty-print
+        it — whether anything is emitted before the leading `{` is exactly what we need to see.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: types-response
+    attributes:
+      label: "診断3: /wp/v2/types に投稿タイプが含まれるか / Diagnostic 3: Is the post type present in /wp/v2/types?"
+      description: |
+        同じコンソールで以下を実行し、結果を貼り付けてください。
+        Run this in the same console and paste the result.
+
+        ```js
+        Object.keys(await wp.apiFetch({ path: '/wp/v2/types' }))
+        ```
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-log
+    attributes:
+      label: "診断4: debug.log / Diagnostic 4: debug.log"
+      description: |
+        `wp-config.php` で `WP_DEBUG` を有効・`WP_DEBUG_DISPLAY` を **無効** にしたうえで
+        編集画面を開き、`wp-content/debug.log` に出力された内容を貼り付けてください。
+        `WP_DEBUG_DISPLAY` を無効にするのは、警告出力が REST の JSON を壊して
+        原因を見誤らせるためです。何も出力されなかった場合は「出力なし」とお書きください。
+
+        Set `WP_DEBUG` to true and `WP_DEBUG_DISPLAY` to **false** in `wp-config.php`,
+        load the edit screen, then paste the contents of `wp-content/debug.log`.
+        `WP_DEBUG_DISPLAY` must be off because printed warnings corrupt the REST JSON
+        and mask the real cause. Write "no output" if the log stays empty.
+
+        ```php
+        define( 'WP_DEBUG', true );
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        ```
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: console-errors
+    attributes:
+      label: "診断5: コンソールのエラー / Diagnostic 5: Console errors"
+      description: |
+        エラーが1件も出ていない場合も、その旨をお書きください。それ自体が切り分けの手がかりになります。
+        If there are no errors at all, please say so explicitly — that is itself a useful signal.
+      render: text
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## 対応方針について / About how we handle these reports
+
+        競合相手が特定できた報告については、原因の切り分け結果と、
+        **どちらか一方の利用を見合わせていただく提案** を含めて回答します。
+        本プラグイン側で回避できる問題であれば修正しますが、
+        相手側の実装に起因する場合は修正できないことがあります。あらかじめご了承ください。
+
+        For reports with an identified conflict, we will respond with our analysis and,
+        where appropriate, a recommendation to use one of the two plugins rather than both.
+        We will fix the problem on our side when it is ours to fix, but when it originates
+        in the other plugin's implementation, a fix here may not be possible.
